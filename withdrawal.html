@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nepal Trading — Withdraw Funds</title>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase App & Services (Compat UMD scripts to prevent loading freeze) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0b0e14;
+            --bg-secondary: #131722;
+            --bg-card: #1e222d;
+            --border-color: #2a2e39;
+            --text-main: #d1d4dc;
+            --text-muted: #787b86;
+            --accent-green: #089981;
+            --accent-red: #f23645;
+            --accent-blue: #2962ff;
+            --accent-orange: #f57c00;
+            --font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 85px;
+        }
+
+        .hidden { display: none !important; }
+
+        /* LOADING SCREEN */
+        #loading-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            color: #fff;
+            gap: 12px;
+        }
+
+        /* HEADER */
+        .page-header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .btn-back {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-decoration: none;
+        }
+
+        /* CONTAINER */
+        .container {
+            max-width: 520px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        /* CARDS */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 18px;
+            margin-bottom: 16px;
+        }
+
+        .balance-card {
+            border-left: 4px solid var(--accent-orange);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .balance-card h3 { font-size: 12px; color: var(--text-muted); }
+        .balance-card .amount { font-size: 22px; font-weight: 700; color: #fff; margin-top: 4px; }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            margin-top: 18px;
+        }
+
+        /* METHOD SELECTOR GRID */
+        .method-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .method-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 12px 8px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .method-btn i { font-size: 18px; display: block; margin-bottom: 6px; color: var(--text-main); }
+        .method-btn.active {
+            border-color: var(--accent-blue);
+            background: rgba(41, 98, 255, 0.1);
+            color: #fff;
+        }
+        .method-btn.active i { color: var(--accent-blue); }
+
+        /* FORM ELEMENTS */
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group select:focus { border-color: var(--accent-blue); }
+
+        /* SUMMARY BOX */
+        .summary-box {
+            background: rgba(41, 98, 255, 0.05);
+            border: 1px solid rgba(41, 98, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .summary-row:last-child { margin-bottom: 0; font-weight: 700; color: #fff; border-top: 1px solid var(--border-color); padding-top: 6px; }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent-blue);
+            border: none;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-submit:hover { opacity: 0.9; }
+
+        /* HISTORY LIST */
+        .history-list {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .history-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+        .history-item:last-child { border-bottom: none; }
+        .history-info span { display: block; font-size: 11px; color: var(--text-muted); }
+
+        .status-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+        .status-pending { background: rgba(245, 124, 0, 0.2); color: var(--accent-orange); }
+        .status-approved, .status-paid { background: rgba(8, 153, 129, 0.2); color: var(--accent-green); }
+        .status-rejected, .status-cancelled { background: rgba(242, 54, 69, 0.2); color: var(--accent-red); }
+
+        /* NOTICE BANNER */
+        .notice-banner {
+            background: rgba(245, 124, 0, 0.1);
+            border: 1px solid rgba(245, 124, 0, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            color: #ffb74d;
+            margin-bottom: 16px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        /* RESTRICTED NOTICE */
+        .restricted-box {
+            background: rgba(242, 54, 69, 0.15);
+            border: 1px solid var(--accent-red);
+            color: #ff808b;
+            padding: 16px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        /* FIXED BOTTOM NAVIGATION */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 1000;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-muted);
+            text-align: center;
+            font-size: 10px;
+            font-weight: 500;
+            flex: 1;
+        }
+        .nav-link i { font-size: 18px; display: block; margin-bottom: 2px; }
+        .nav-link.active { color: var(--accent-blue); }
+    </style>
+</head>
+<body>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <i class="fa-solid fa-spinner fa-spin fa-2x" style="color: var(--accent-blue);"></i>
+        <p>Loading Withdrawal Portal...</p>
+    </div>
+
+    <!-- HEADER -->
+    <header class="page-header">
+        <div class="header-title">
+            <a href="index.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+            <span>Request Withdrawal</span>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);" id="auth-email-label">user@example.com</div>
+    </header>
+
+    <div class="container">
+
+        <!-- NOTICE BANNER -->
+        <div class="notice-banner">
+            <i class="fa-solid fa-triangle-exclamation" style="margin-top: 2px;"></i>
+            <div>
+                <strong>Rule:</strong> Minimum withdrawal is <strong>NPR 500</strong>. Select your country to proceed.
+            </div>
+        </div>
+
+        <!-- WALLET CARD -->
+        <div class="card balance-card">
+            <div>
+                <h3>Withdrawable Real Balance</h3>
+                <div class="amount" id="withdrawable-balance">रु. 0.00</div>
+            </div>
+            <i class="fa-solid fa-wallet fa-2x" style="color: var(--accent-orange);"></i>
+        </div>
+
+        <!-- WITHDRAWAL FORM CARD -->
+        <div class="card">
+            <form id="withdrawal-form">
+                <!-- COUNTRY SELECTOR -->
+                <div class="form-group">
+                    <label>Select Country / Region</label>
+                    <select id="country-select" onchange="onCountryChange()">
+                        <option value="NP">Nepal (नेपाल)</option>
+                        <option value="IN">India (भारत)</option>
+                        <option value="US">United States (USA)</option>
+                        <option value="CN">China (चीन)</option>
+                        <option value="UK">United Kingdom (UK)</option>
+                        <option value="AU">Australia</option>
+                        <option value="OTHER">Other Country</option>
+                    </select>
+                </div>
+
+                <!-- RESTRICTION ALERT (Hidden by default for NP/IN) -->
+                <div id="restricted-notice" class="restricted-box hidden">
+                    <i class="fa-solid fa-ban fa-2x" style="margin-bottom: 8px; display:block;"></i>
+                    Not available for your IP / Region! Withdrawals are currently restricted to Nepal and India regions only.
+                </div>
+
+                <!-- MAIN INTERACTIVE SECTION -->
+                <div id="withdrawal-interactive-section">
+                    <div class="section-title">Select Payout Method</div>
+                    <div class="method-grid" id="method-grid-container">
+                        <!-- Dynamically populated methods based on country -->
+                    </div>
+
+                    <div class="form-group">
+                        <label>Withdrawal Amount (NPR)</label>
+                        <input type="number" id="withdraw-amount" min="500" step="1" required placeholder="Min 500 रु.">
+                    </div>
+
+                    <!-- Dynamic Fields Container -->
+                    <div id="dynamic-fields">
+                        <!-- Dynamic inputs based on selected method -->
+                    </div>
+
+                    <!-- SUMMARY BREAKDOWN -->
+                    <div class="summary-box">
+                        <div class="summary-row">
+                            <span>Requested Amount:</span>
+                            <span id="sum-amount">रु. 0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Processing Fee (1%):</span>
+                            <span id="sum-fee">रु. 0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>Net Payout Amount:</span>
+                            <span id="sum-payout">रु. 0.00</span>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="btn-submit" class="btn-submit">
+                        <span id="btn-text">Submit Withdrawal Request</span>
+                        <i class="fa-solid fa-spinner fa-spin hidden" id="spinner"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- WITHDRAWAL HISTORY -->
+        <div class="section-title">My Withdrawal History</div>
+        <div class="history-list" id="withdrawal-history">
+            <div class="history-item">
+                <div class="history-info">
+                    <strong>No withdrawal records found</strong>
+                    <span>Your requests will appear here</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- FIXED BOTTOM NAVIGATION -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-link">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+        </a>
+        <a href="chart.html" class="nav-link">
+            <i class="fa-solid fa-chart-simple"></i>
+            <span>Chart</span>
+        </a>
+        <a href="demolive.html" class="nav-link">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Trade</span>
+        </a>
+        <a href="deposit.html" class="nav-link">
+            <i class="fa-solid fa-wallet"></i>
+            <span>Deposit</span>
+        </a>
+        <a href="withdrawal.html" class="nav-link active">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+            <span>Withdraw</span>
+        </a>
+    </nav>
+
+    <!-- FIREBASE COMPAT SCRIPT & WITHDRAWAL LOGIC -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCxADbw9ZmSHzfoNdt2eJLqBjYFaj3xJ7w",
+            authDomain: "trading-ca98c.firebaseapp.com",
+            projectId: "trading-ca98c",
+            storageBucket: "trading-ca98c.firebasestorage.app",
+            messagingSenderId: "62562061669",
+            appId: "1:62062061669:web:0e6763b05e6ebb6aa3658c",
+            measurementId: "G-945BEYMN47"
+        };
+
+        // Initialize Firebase Compat
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const loadingScreen = document.getElementById('loading-screen');
+        let currentBalance = 0;
+        let selectedCountry = 'NP';
+        let selectedMethod = 'esewa';
+        let currentUser = null;
+
+        // 3 Seconds Safety Fallback Timer to prevent infinite loading in WebView/Hopweb
+        let safetyTimer = setTimeout(() => {
+            loadingScreen.classList.add('hidden');
+        }, 3000);
+
+        // AUTHENTICATION GUARD
+        auth.onAuthStateChanged(async (user) => {
+            clearTimeout(safetyTimer);
+            if (!user) {
+                window.location.href = "login.html";
+            } else {
+                currentUser = user;
+                if (user.disabled) {
+                    alert("Account is suspended.");
+                    await auth.signOut();
+                    window.location.href = "login.html";
+                    return;
+                }
+                document.getElementById('auth-email-label').innerText = user.email;
+                await loadWalletData(user.uid);
+                await loadWithdrawalHistory(user.uid);
+                updateMethodsUI();
+                loadingScreen.classList.add('hidden');
+            }
+        });
+
+        async function loadWalletData(uid) {
+            try {
+                const walletRef = db.collection("wallets").doc(uid);
+                // Real-time listener राखी दिइएको छ जसले ब्यालेन्स घट्दा/बढ्दा तुरुन्तै अपडेट गर्छ
+                walletRef.onSnapshot((doc) => {
+                    if (doc.exists) {
+                        currentBalance = doc.data().realBalance || 0;
+                        document.getElementById('withdrawable-balance').innerText = `रु. ${currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                    } else {
+                        currentBalance = 0;
+                        document.getElementById('withdrawable-balance').innerText = "रु. 0.00";
+                    }
+                });
+            } catch (e) {
+                console.error("Failed to load wallet balance:", e);
+            }
+        }
+
+        async function loadWithdrawalHistory(uid) {
+            try {
+                db.collection("withdrawalRequests")
+                    .where("userUid", "==", uid)
+                    .onSnapshot((snap) => {
+                        const container = document.getElementById('withdrawal-history');
+                        if (snap.empty) {
+                            container.innerHTML = `
+                                <div class="history-item">
+                                    <div class="history-info">
+                                        <strong>No withdrawal records found</strong>
+                                        <span>Your requests will appear here</span>
+                                    </div>
+                                </div>`;
+                            return;
+                        }
+
+                        let docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+                        container.innerHTML = docs.slice(0, 10).map(data => {
+                            const dateStr = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleString() : 'Just now';
+                            const status = (data.status || 'PENDING').toLowerCase();
+                            return `
+                                <div class="history-item">
+                                    <div class="history-info">
+                                        <strong>रु. ${(data.amount || 0).toLocaleString()} (${(data.method || '').toUpperCase()})</strong>
+                                        <span>Ref: ${data.id.substring(0, 8)}... | ${dateStr}</span>
+                                    </div>
+                                    <span class="status-badge status-${status}">${data.status || 'PENDING'}</span>
+                                </div>
+                            `;
+                        }).join('');
+                    });
+            } catch (e) {
+                console.warn("Could not fetch withdrawal history:", e.message);
+            }
+        }
+
+        // COUNTRY SWITCHER
+        window.onCountryChange = function() {
+            selectedCountry = document.getElementById('country-select').value;
+            const restrictedBox = document.getElementById('restricted-notice');
+            const interactiveSection = document.getElementById('withdrawal-interactive-section');
+
+            if (selectedCountry === 'NP' || selectedCountry === 'IN') {
+                restrictedBox.classList.add('hidden');
+                interactiveSection.classList.remove('hidden');
+                if (selectedCountry === 'NP') {
+                    selectedMethod = 'esewa';
+                } else {
+                    selectedMethod = 'upi';
+                }
+                updateMethodsUI();
+            } else {
+                restrictedBox.classList.remove('hidden');
+                interactiveSection.classList.add('hidden');
+            }
+        };
+
+        // UPDATE METHODS BASED ON COUNTRY
+        function updateMethodsUI() {
+            const gridContainer = document.getElementById('method-grid-container');
+            if (selectedCountry === 'NP') {
+                gridContainer.innerHTML = `
+                    <button type="button" class="method-btn ${selectedMethod === 'esewa' ? 'active' : ''}" onclick="setMethod('esewa')">
+                        <i class="fa-solid fa-mobile-screen-button"></i> eSewa
+                    </button>
+                    <button type="button" class="method-btn ${selectedMethod === 'khalti' ? 'active' : ''}" onclick="setMethod('khalti')">
+                        <i class="fa-solid fa-wallet"></i> Khalti
+                    </button>
+                    <button type="button" class="method-btn ${selectedMethod === 'bank' ? 'active' : ''}" onclick="setMethod('bank')">
+                        <i class="fa-solid fa-building-columns"></i> Bank
+                    </button>
+                `;
+            } else if (selectedCountry === 'IN') {
+                gridContainer.innerHTML = `
+                    <button type="button" class="method-btn ${selectedMethod === 'upi' ? 'active' : ''}" onclick="setMethod('upi')">
+                        <i class="fa-solid fa-qrcode"></i> UPI ID
+                    </button>
+                    <button type="button" class="method-btn ${selectedMethod === 'paytm' ? 'active' : ''}" onclick="setMethod('paytm')">
+                        <i class="fa-solid fa-mobile-screen"></i> Paytm
+                    </button>
+                    <button type="button" class="method-btn ${selectedMethod === 'in_bank' ? 'active' : ''}" onclick="setMethod('in_bank')">
+                        <i class="fa-solid fa-landmark"></i> IN Bank
+                    </button>
+                `;
+            }
+            renderDynamicFields();
+        }
+
+        // METHOD SWITCHER
+        window.setMethod = function(method) {
+            selectedMethod = method;
+            document.querySelectorAll('.method-btn').forEach(btn => btn.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            renderDynamicFields();
+        };
+
+        // RENDER DYNAMIC FORM FIELDS
+        function renderDynamicFields() {
+            const container = document.getElementById('dynamic-fields');
+            if (selectedMethod === 'esewa') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label>eSewa Mobile Number / ID</label>
+                        <input type="text" id="field-acc-1" required placeholder="98XXXXXXXX">
+                    </div>`;
+            } else if (selectedMethod === 'khalti') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label>Khalti Mobile Number / ID</label>
+                        <input type="text" id="field-acc-1" required placeholder="98XXXXXXXX">
+                    </div>`;
+            } else if (selectedMethod === 'bank') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label>Bank Name</label>
+                        <input type="text" id="field-bank-name" required placeholder="e.g. Global IME Bank">
+                    </div>
+                    <div class="form-group">
+                        <label>Bank Account Number</label>
+                        <input type="text" id="field-acc-no" required placeholder="Enter bank account number">
+                    </div>
+                    <div class="form-group">
+                        <label>Account Holder Name</label>
+                        <input type="text" id="field-acc-holder" required placeholder="Full name of account holder">
+                    </div>`;
+            } else if (selectedMethod === 'upi') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label>UPI ID (e.g. paytm@upi / gpay@oksbi)</label>
+                        <input type="text" id="field-acc-1" required placeholder="username@oksbi">
+                    </div>`;
+            } else if (selectedMethod === 'paytm') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label>Paytm Wallet Mobile Number</label>
+                        <input type="text" id="field-acc-1" required placeholder="10-digit mobile number">
+                    </div>`;
+            } else if (selectedMethod === 'in_bank') {
+                container.innerHTML = `
+                    <div class="form-group">
+                        <label>Bank Name</label>
+                        <input type="text" id="field-bank-name" required placeholder="e.g. State Bank of India">
+                    </div>
+                    <div class="form-group">
+                        <label>IFSC Code</label>
+                        <input type="text" id="field-ifsc" required placeholder="e.g. SBIN0001234">
+                    </div>
+                    <div class="form-group">
+                        <label>Bank Account Number</label>
+                        <input type="text" id="field-acc-no" required placeholder="Enter bank account number">
+                    </div>
+                    <div class="form-group">
+                        <label>Account Holder Name</label>
+                        <input type="text" id="field-acc-holder" required placeholder="Full name of account holder">
+                    </div>`;
+            }
+        }
+
+        // DYNAMIC FEE & SUMMARY CALCULATION
+        const amountInput = document.getElementById('withdraw-amount');
+        amountInput.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value) || 0;
+            const fee = val * 0.01; // 1% fee
+            const net = val - fee;
+
+            document.getElementById('sum-amount').innerText = `रु. ${val.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('sum-fee').innerText = `रु. ${fee.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('sum-payout').innerText = `रु. ${net > 0 ? net.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00'}`;
+        });
+
+        // FORM SUBMISSION WITH FIRESTORE TRANSACTION (BALANCE DEDUCTION)
+        document.getElementById('withdrawal-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const amount = parseFloat(amountInput.value);
+
+            if (isNaN(amount) || amount < 500) {
+                alert("Minimum withdrawal amount is NPR 500.");
+                return;
+            }
+
+            if (amount > currentBalance) {
+                alert("Insufficient withdrawable balance.");
+                return;
+            }
+
+            let accountDetails = "";
+            if (selectedMethod === 'bank') {
+                const bName = document.getElementById('field-bank-name').value.trim();
+                const accNo = document.getElementById('field-acc-no').value.trim();
+                const accHolder = document.getElementById('field-acc-holder').value.trim();
+                accountDetails = `Bank: ${bName} | AccNo: ${accNo} | Holder: ${accHolder}`;
+            } else if (selectedMethod === 'in_bank') {
+                const bName = document.getElementById('field-bank-name').value.trim();
+                const ifsc = document.getElementById('field-ifsc').value.trim();
+                const accNo = document.getElementById('field-acc-no').value.trim();
+                const accHolder = document.getElementById('field-acc-holder').value.trim();
+                accountDetails = `Bank: ${bName} | IFSC: ${ifsc} | AccNo: ${accNo} | Holder: ${accHolder}`;
+            } else {
+                accountDetails = document.getElementById('field-acc-1').value.trim();
+            }
+
+            if (!accountDetails) {
+                alert("Please fill in your account details.");
+                return;
+            }
+
+            if (!confirm(`Confirm withdrawal request of रु. ${amount.toLocaleString()} via ${selectedMethod.toUpperCase()} (${selectedCountry})?`)) {
+                return;
+            }
+
+            const btn = document.getElementById('btn-submit');
+            const spinner = document.getElementById('spinner');
+            const btnText = document.getElementById('btn-text');
+
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.innerText = "Processing Request...";
+
+            try {
+                const walletRef = db.collection("wallets").doc(currentUser.uid);
+                const withdrawalRef = db.collection("withdrawalRequests").doc();
+
+                // Firestore Transaction प्रयोग गरेर ब्यालेन्स घटाउने र सँगै Request सेभ गर्ने
+                await db.runTransaction(async (transaction) => {
+                    const walletDoc = await transaction.get(walletRef);
+                    let currentBal = 0;
+                    if (walletDoc.exists) {
+                        currentBal = walletDoc.data().realBalance || 0;
+                    }
+
+                    if (currentBal < amount) {
+                        throw new Error("Insufficient withdrawable balance.");
+                    }
+
+                    // ब्यालेन्स घटाउने
+                    const newBalance = currentBal - amount;
+                    if (walletDoc.exists) {
+                        transaction.update(walletRef, { realBalance: newBalance });
+                    } else {
+                        transaction.set(walletRef, { realBalance: newBalance });
+                    }
+
+                    // Withdrawal Request सेभ गर्ने
+                    transaction.set(withdrawalRef, {
+                        userUid: currentUser.uid,
+                        userEmail: currentUser.email,
+                        country: selectedCountry,
+                        method: selectedMethod,
+                        accountDetails: accountDetails,
+                        amount: amount,
+                        status: 'PENDING',
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                });
+
+                alert("Withdrawal request submitted successfully! Funds have been deducted from your balance pending verification.");
+                amountInput.value = '';
+                document.getElementById('sum-amount').innerText = "रु. 0.00";
+                document.getElementById('sum-fee').innerText = "रु. 0.00";
+                document.getElementById('sum-payout').innerText = "रु. 0.00";
+
+            } catch (err) {
+                alert("Withdrawal Error: " + err.message);
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.innerText = "Submit Withdrawal Request";
+            }
+        });
+    </script>
+</body>
+</html>
