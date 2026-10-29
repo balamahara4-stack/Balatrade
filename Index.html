@@ -1,1 +1,849 @@
-go
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nepal Trading — Platform</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase App & Services (UMD CDN for seamless WebView compatibility) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0b0e14;
+            --bg-secondary: #131722;
+            --bg-card: #1e222d;
+            --border-color: #2a2e39;
+            --text-main: #d1d4dc;
+            --text-muted: #787b86;
+            --accent-green: #089981;
+            --accent-red: #f23645;
+            --accent-orange: #f57c00;
+            --accent-blue: #2962ff;
+            --font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .hidden { display: none !important; }
+
+        /* LOADING SCREEN */
+        #loading-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            color: #fff;
+            gap: 15px;
+        }
+
+        /* AUTH CONTAINER STYLES */
+        #auth-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+            padding: 20px;
+        }
+
+        .auth-container {
+            width: 100%;
+            max-width: 420px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 32px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+        }
+
+        .auth-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .auth-header i {
+            font-size: 44px;
+            color: var(--accent-blue);
+            margin-bottom: 12px;
+        }
+
+        .auth-header h1 {
+            font-size: 24px;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .auth-header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .tab-switcher {
+            display: flex;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 4px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: var(--accent-blue);
+            color: #fff;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .input-wrapper input {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .input-wrapper input:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .input-wrapper .toggle-pwd {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: var(--text-muted);
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+
+        .form-actions a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .form-actions a:hover {
+            text-decoration: underline;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 13px;
+            background: var(--accent-blue);
+            border: none;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            background: #1e4bd8;
+        }
+
+        .msg-box {
+            margin-top: 16px;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .msg-box.error {
+            background: rgba(242, 54, 69, 0.1);
+            color: var(--accent-red);
+            border: 1px solid rgba(242, 54, 69, 0.2);
+        }
+
+        .msg-box.success {
+            background: rgba(8, 153, 129, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(8, 153, 129, 0.2);
+        }
+
+        /* DASHBOARD CONTAINER STYLES */
+        #dashboard-wrapper {
+            flex: 1;
+            padding-bottom: 80px;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .header-brand i { color: var(--accent-blue); }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .icon-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            width: 38px; height: 38px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .wallet-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .wallet-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .wallet-card.real { border-top: 3px solid var(--accent-green); }
+        .wallet-card.demo { border-top: 3px solid var(--accent-orange); }
+
+        .wallet-title {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .wallet-balance {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+
+        .wallet-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .btn-mini {
+            flex: 1;
+            padding: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+        }
+
+        .btn-mini.deposit { background: rgba(8, 153, 129, 0.2); color: var(--accent-green); }
+        .btn-mini.withdraw { background: rgba(242, 54, 69, 0.2); color: var(--accent-red); }
+        .btn-mini.demo { background: rgba(245, 124, 0, 0.2); color: var(--accent-orange); }
+
+        .section-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 12px;
+            margin-top: 20px;
+        }
+
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .action-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 8px;
+            text-align: center;
+            text-decoration: none;
+            color: var(--text-main);
+            transition: border-color 0.2s;
+        }
+
+        .action-item:hover { border-color: var(--accent-blue); }
+        .action-item i { font-size: 18px; color: var(--accent-blue); margin-bottom: 6px; display: block; }
+        .action-item span { font-size: 11px; font-weight: 500; display: block; }
+
+        .market-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .market-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-decoration: none;
+            color: var(--text-main);
+        }
+
+        .market-info h4 { font-size: 14px; color: #fff; }
+        .market-info span { font-size: 11px; color: var(--text-muted); }
+        .market-price { text-align: right; }
+        .market-price .price { font-size: 14px; font-weight: 600; color: #fff; }
+        .market-price .change { font-size: 12px; font-weight: 600; }
+        .change.up { color: var(--accent-green); }
+        .change.down { color: var(--accent-red); }
+
+        .notice-box {
+            background: rgba(41, 98, 255, 0.1);
+            border: 1px solid rgba(41, 98, 255, 0.3);
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .notice-box i { color: var(--accent-blue); font-size: 16px; }
+
+        .transaction-list {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .tx-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .tx-item:last-child { border-bottom: none; }
+        .tx-details span { display: block; font-size: 11px; color: var(--text-muted); }
+        .tx-amount { font-weight: 600; text-align: right; }
+
+        /* BOTTOM NAVIGATION */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 1000;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-muted);
+            text-align: center;
+            font-size: 10px;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .nav-link i { font-size: 18px; display: block; margin-bottom: 2px; }
+        .nav-link.active { color: var(--accent-blue); }
+    </style>
+</head>
+<body>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <i class="fa-solid fa-spinner fa-spin fa-2x" style="color: var(--accent-blue);"></i>
+        <p>Loading Nepal Trading...</p>
+    </div>
+
+    <!-- 1. AUTHENTICATION SECTION (LOGIN / REGISTER) -->
+    <div id="auth-wrapper" class="hidden">
+        <div class="auth-container">
+            <div class="auth-header">
+                <i class="fa-solid fa-chart-line"></i>
+                <h1>Nepal Trading</h1>
+                <p>Secure Financial & Trading Platform</p>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div class="tab-switcher">
+                <button id="tab-login" class="tab-btn active">Login</button>
+                <button id="tab-register" class="tab-btn">Register</button>
+            </div>
+
+            <!-- Auth Form -->
+            <form id="auth-form">
+                <div class="input-group">
+                    <label>Email Address</label>
+                    <div class="input-wrapper">
+                        <input type="email" id="user-email" required placeholder="user@example.com">
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label>Password</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="user-password" required placeholder="••••••••••••">
+                        <i class="fa-solid fa-eye toggle-pwd" id="toggle-password"></i>
+                    </div>
+                </div>
+
+                <div class="form-actions" id="login-actions">
+                    <label><input type="checkbox" id="remember-me"> Remember me</label>
+                    <a href="#" id="forgot-pwd-link">Forgot Password?</a>
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn-submit">
+                    <span id="btn-text">Login to Account</span>
+                    <i class="fa-solid fa-spinner fa-spin hidden" id="auth-spinner"></i>
+                </button>
+
+                <div id="auth-msg" class="msg-box hidden"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. HOME DASHBOARD SECTION -->
+    <div id="dashboard-wrapper" class="hidden">
+        <!-- HEADER -->
+        <header>
+            <div class="header-brand">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Nepal Trading</span>
+            </div>
+            <div class="header-right">
+                <div class="icon-btn" id="logout-btn" title="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </div>
+            </div>
+        </header>
+
+        <!-- CONTAINER BODY -->
+        <div class="container">
+            <!-- NOTICE BOX -->
+            <div class="notice-box">
+                <i class="fa-solid fa-circle-info"></i>
+                <div>Minimum Deposit: <strong>NPR 100</strong> | Minimum Withdrawal: <strong>NPR 500</strong></div>
+            </div>
+
+            <!-- WALLET BALANCES -->
+            <div class="wallet-grid">
+                <div class="wallet-card real">
+                    <div class="wallet-title">Real Wallet <i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="wallet-balance" id="real-balance">रु. 0</div>
+                    <div class="wallet-actions">
+                        <a href="deposit.html" class="btn-mini deposit">Deposit</a>
+                        <a href="withdrawal.html" class="btn-mini withdraw">Withdraw</a>
+                    </div>
+                </div>
+                <div class="wallet-card demo">
+                    <div class="wallet-title">Demo Wallet <span style="color:var(--accent-orange)">Practice</span></div>
+                    <div class="wallet-balance" id="demo-balance">रु. 10,000</div>
+                    <div class="wallet-actions">
+                        <a href="demolive.html?mode=demo" class="btn-mini demo">Demo Trade</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- QUICK ACTIONS -->
+            <div class="section-title">Quick Actions</div>
+            <div class="quick-actions">
+                <a href="demolive.html" class="action-item">
+                    <i class="fa-solid fa-bolt"></i>
+                    <span>Trade Live</span>
+                </a>
+                <a href="chart.html" class="action-item">
+                    <i class="fa-solid fa-candlestick-chart"></i>
+                    <span>Charts</span>
+                </a>
+                <a href="deposit.html" class="action-item">
+                    <i class="fa-solid fa-wallet"></i>
+                    <span>Deposit</span>
+                </a>
+                <a href="withdrawal.html" class="action-item">
+                    <i class="fa-solid fa-money-bill-transfer"></i>
+                    <span>Withdraw</span>
+                </a>
+            </div>
+
+            <!-- MARKET OVERVIEW -->
+            <div class="section-title">Market Overview <span style="font-size:10px; color:var(--text-muted);">(Sample Data)</span></div>
+            <div class="market-list">
+                <a href="chart.html?asset=BTCUSD" class="market-card">
+                    <div class="market-info">
+                        <h4>BTC/USD</h4>
+                        <span>Bitcoin / US Dollar</span>
+                    </div>
+                    <div class="market-price">
+                        <div class="price">91,240.50</div>
+                        <div class="change up">+2.45%</div>
+                    </div>
+                </a>
+                <a href="chart.html?asset=ETHUSD" class="market-card">
+                    <div class="market-info">
+                        <h4>ETH/USD</h4>
+                        <span>Ethereum / US Dollar</span>
+                    </div>
+                    <div class="market-price">
+                        <div class="price">3,420.10</div>
+                        <div class="change down">-0.85%</div>
+                    </div>
+                </a>
+                <a href="chart.html?asset=GOLD" class="market-card">
+                    <div class="market-info">
+                        <h4>Gold (XAU/USD)</h4>
+                        <span>Spot Gold</span>
+                    </div>
+                    <div class="market-price">
+                        <div class="price">2,650.80</div>
+                        <div class="change up">+0.42%</div>
+                    </div>
+                </a>
+            </div>
+
+            <!-- RECENT TRANSACTIONS -->
+            <div class="section-title">Recent Transactions</div>
+            <div class="transaction-list" id="transaction-list-container">
+                <div class="tx-item">
+                    <div class="tx-details">
+                        <strong>No transactions found</strong>
+                        <span>Get started by making a deposit</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FIXED BOTTOM NAVIGATION -->
+        <nav class="bottom-nav">
+            <a href="index.html" class="nav-link active">
+                <i class="fa-solid fa-house"></i>
+                <span>Home</span>
+            </a>
+            <a href="chart.html" class="nav-link">
+                <i class="fa-solid fa-chart-simple"></i>
+                <span>Chart</span>
+            </a>
+            <a href="demolive.html" class="nav-link">
+                <i class="fa-solid fa-bolt"></i>
+                <span>Trade</span>
+            </a>
+            <a href="deposit.html" class="nav-link">
+                <i class="fa-solid fa-wallet"></i>
+                <span>Deposit</span>
+            </a>
+            <a href="withdrawal.html" class="nav-link">
+                <i class="fa-solid fa-money-bill-transfer"></i>
+                <span>Withdraw</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- FIREBASE COMPAT SCRIPT LOGIC -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCxADbw9ZmSHzfoNdt2eJLqBjYFaj3xJ7w",
+            authDomain: "trading-ca98c.firebaseapp.com",
+            projectId: "trading-ca98c",
+            storageBucket: "trading-ca98c.firebasestorage.app",
+            messagingSenderId: "62562061669",
+            appId: "1:62062061669:web:0e6763b05e6ebb6aa3658c",
+            measurementId: "G-945BEYMN47"
+        };
+
+        // Initialize Firebase Compat
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const loadingScreen = document.getElementById('loading-screen');
+        const authWrapper = document.getElementById('auth-wrapper');
+        const dashboardWrapper = document.getElementById('dashboard-wrapper');
+
+        let isLoginMode = true;
+
+        const tabLogin = document.getElementById('tab-login');
+        const tabRegister = document.getElementById('tab-register');
+        const submitBtnText = document.getElementById('btn-text');
+        const loginActions = document.getElementById('login-actions');
+        const authForm = document.getElementById('auth-form');
+        const authMsg = document.getElementById('auth-msg');
+        const authSpinner = document.getElementById('auth-spinner');
+        const togglePwd = document.getElementById('toggle-password');
+        const pwdInput = document.getElementById('user-password');
+
+        // Absolute Safety Timer (2 seconds max loading)
+        let safetyTimer = setTimeout(() => {
+            loadingScreen.classList.add('hidden');
+            authWrapper.classList.remove('hidden');
+        }, 2000);
+
+        // AUTH STATE OBSERVER
+        auth.onAuthStateChanged(async (user) => {
+            clearTimeout(safetyTimer);
+            if (!user) {
+                dashboardWrapper.classList.add('hidden');
+                authWrapper.classList.remove('hidden');
+                loadingScreen.classList.add('hidden');
+            } else {
+                try {
+                    authWrapper.classList.add('hidden');
+
+                    const walletRef = db.collection("wallets").doc(user.uid);
+                    let walletSnap = await walletRef.get();
+
+                    if (!walletSnap.exists) {
+                        await walletRef.set({
+                            realBalance: 0,
+                            demoBalance: 10000,
+                            email: user.email,
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                        walletSnap = await walletRef.get();
+                    }
+
+                    if (walletSnap.exists) {
+                        const data = walletSnap.data();
+                        document.getElementById('real-balance').innerText = `रु. ${(data.realBalance || 0).toLocaleString()}`;
+                        document.getElementById('demo-balance').innerText = `रु. ${(data.demoBalance !== undefined ? data.demoBalance : 10000).toLocaleString()}`;
+                    }
+
+                    await loadRecentTransactions(user.uid);
+
+                    dashboardWrapper.classList.remove('hidden');
+                    loadingScreen.classList.add('hidden');
+                } catch (err) {
+                    console.error("Dashboard error:", err);
+                    loadingScreen.classList.add('hidden');
+                    dashboardWrapper.classList.remove('hidden');
+                }
+            }
+        });
+
+        // Tab Switching Logic
+        tabLogin.addEventListener('click', () => {
+            isLoginMode = true;
+            tabLogin.classList.add('active');
+            tabRegister.classList.remove('active');
+            submitBtnText.innerText = "Login to Account";
+            loginActions.classList.remove('hidden');
+            authMsg.classList.add('hidden');
+        });
+
+        tabRegister.addEventListener('click', () => {
+            isLoginMode = false;
+            tabRegister.classList.add('active');
+            tabLogin.classList.remove('active');
+            submitBtnText.innerText = "Create New Account";
+            loginActions.classList.add('hidden');
+            authMsg.classList.add('hidden');
+        });
+
+        // Show/Hide Password
+        togglePwd.addEventListener('click', () => {
+            if (pwdInput.type === 'password') {
+                pwdInput.type = 'text';
+                togglePwd.className = "fa-solid fa-eye-slash toggle-pwd";
+            } else {
+                pwdInput.type = 'password';
+                togglePwd.className = "fa-solid fa-eye toggle-pwd";
+            }
+        });
+
+        // Form Submit
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            authMsg.classList.add('hidden');
+            authSpinner.classList.remove('hidden');
+
+            const email = document.getElementById('user-email').value;
+            const password = pwdInput.value;
+
+            try {
+                if (isLoginMode) {
+                    await auth.signInWithEmailAndPassword(email, password);
+                } else {
+                    // नयाँ खाता बनाउँदा (Register गर्दा)
+                    const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                    const user = userCredential.user;
+
+                    // Firestore को 'users' कलेक्सनमा इमेल र पासवर्ड स्पष्ट रूपमा सेभ गर्ने (Admin ले हेर्न मिल्ने गरी)
+                    await db.collection("users").doc(user.uid).set({
+                        email: email,
+                        password: password, // Admin प्यानलमा देखाउनको लागि पासवर्ड सेभ गरिएको
+                        uid: user.uid,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            } catch (error) {
+                authSpinner.classList.add('hidden');
+                showAuthMsg(error.message, "error");
+            }
+        });
+
+        // Forgot Password
+        document.getElementById('forgot-pwd-link').addEventListener('click', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('user-email').value;
+            if (!email) {
+                showAuthMsg("Please enter your email address first.", "error");
+                return;
+            }
+            try {
+                await auth.sendPasswordResetEmail(email);
+                showAuthMsg("Password reset email sent! Check your inbox.", "success");
+            } catch (error) {
+                showAuthMsg(error.message, "error");
+            }
+        });
+
+        function showAuthMsg(text, type) {
+            authMsg.innerText = text;
+            authMsg.className = `msg-box ${type}`;
+        }
+
+        // Load Recent Transactions
+        async function loadRecentTransactions(uid) {
+            try {
+                const querySnapshot = await db.collection("transactions")
+                    .where("userUid", "==", uid)
+                    .limit(5)
+                    .get();
+
+                const txContainer = document.getElementById('transaction-list-container');
+                if (!querySnapshot.empty) {
+                    txContainer.innerHTML = '';
+                    querySnapshot.forEach((docSnap) => {
+                        const tx = docSnap.data();
+                        const isPos = tx.type && (tx.type.includes('DEPOSIT') || tx.type.includes('ADD'));
+                        const div = document.createElement('div');
+                        div.className = 'tx-item';
+                        div.innerHTML = `
+                            <div class="tx-details">
+                                <strong>${tx.type || 'Transaction'}</strong>
+                                <span>${tx.createdAt && tx.createdAt.seconds ? new Date(tx.createdAt.seconds * 1000).toLocaleDateString() : 'Recent'}</span>
+                            </div>
+                            <div class="tx-amount" style="color: ${isPos ? 'var(--accent-green)' : 'var(--text-main)'}">
+                                ${isPos ? '+' : ''}रु. ${(tx.amount || 0).toLocaleString()}
+                                <span style="font-size:10px; color:var(--text-muted); text-transform:capitalize;">${tx.status || 'completed'}</span>
+                            </div>
+                        `;
+                        txContainer.appendChild(div);
+                    });
+                }
+            } catch (e) {
+                console.warn("Transactions query notice:", e.message);
+            }
+        }
+
+        // Logout Handler
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            if (confirm("Are you sure you want to logout?")) {
+                await auth.signOut();
+            }
+        });
+    </script>
+</body>
+</html>
