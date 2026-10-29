@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nepal Trading — Deposit Funds</title>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase App & Services (Compat UMD scripts for zero loading freeze) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0b0e14;
+            --bg-secondary: #131722;
+            --bg-card: #1e222d;
+            --border-color: #2a2e39;
+            --text-main: #d1d4dc;
+            --text-muted: #787b86;
+            --accent-green: #089981;
+            --accent-red: #f23645;
+            --accent-blue: #2962ff;
+            --accent-orange: #f57c00;
+            --font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        .hidden { display: none !important; }
+
+        /* LOADING SCREEN */
+        #loading-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            color: #fff;
+            gap: 12px;
+        }
+
+        /* HEADER */
+        .page-header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 14px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .btn-back {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-decoration: none;
+        }
+
+        /* MAIN CONTAINER */
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        /* BALANCE CARD */
+        .balance-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--accent-green);
+        }
+
+        .balance-card h3 { font-size: 12px; color: var(--text-muted); }
+        .balance-card .amount { font-size: 20px; font-weight: 700; color: #fff; margin-top: 4px; }
+
+        /* SECTION TITLES */
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 12px;
+            margin-top: 20px;
+        }
+
+        /* QR DISPLAY CARD */
+        .qr-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .qr-image-wrapper {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 12px auto;
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .qr-image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .qr-card p {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .qr-card strong {
+            color: var(--accent-green);
+        }
+
+        /* AMOUNT SELECTION CHIPS */
+        .amount-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .chip-btn {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .chip-btn.active, .chip-btn:hover {
+            border-color: var(--accent-green);
+            background: rgba(8, 153, 129, 0.1);
+            color: var(--accent-green);
+        }
+
+        /* FORM INPUTS */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-group input:focus {
+            border-color: var(--accent-green);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: var(--accent-green);
+            border: none;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .btn-submit:hover { opacity: 0.9; }
+
+        /* DEPOSIT HISTORY LIST WITH CLEAR BOTTOM STATUS */
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .history-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .history-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .history-info strong {
+            font-size: 16px;
+            color: var(--accent-green);
+        }
+
+        .history-details {
+            font-size: 12px;
+            color: var(--text-main);
+            margin-top: 6px;
+            line-height: 1.6;
+        }
+
+        .history-details span {
+            color: var(--text-muted);
+        }
+
+        .status-wrapper {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .status-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-pending { 
+            background: rgba(245, 124, 0, 0.15); 
+            color: var(--accent-orange); 
+            border: 1px solid var(--accent-orange); 
+        }
+        .status-approved { 
+            background: rgba(8, 153, 129, 0.15); 
+            color: var(--accent-green); 
+            border: 1px solid var(--accent-green); 
+        }
+        .status-rejected { 
+            background: rgba(242, 54, 69, 0.15); 
+            color: var(--accent-red); 
+            border: 1px solid var(--accent-red); 
+        }
+
+        /* MODAL FOR QR ENLARGEMENT */
+        .modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 3000;
+        }
+
+        .modal-content-qr {
+            background: #fff;
+            padding: 16px;
+            border-radius: 12px;
+            max-width: 320px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .modal-content-qr img { width: 100%; height: auto; }
+
+        /* FIXED BOTTOM NAVIGATION */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 1000;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-muted);
+            text-align: center;
+            font-size: 10px;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .nav-link i { font-size: 18px; display: block; margin-bottom: 2px; }
+        .nav-link.active { color: var(--accent-blue); }
+    </style>
+</head>
+<body>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <i class="fa-solid fa-spinner fa-spin fa-2x" style="color: var(--accent-green);"></i>
+        <p>Loading Deposit Portal...</p>
+    </div>
+
+    <!-- PAGE HEADER -->
+    <header class="page-header">
+        <div class="header-title">
+            <a href="index.html" class="btn-back"><i class="fa-solid fa-arrow-left"></i></a>
+            <span>Deposit Funds</span>
+        </div>
+        <div style="font-size: 12px; color: var(--text-muted);" id="user-email-display">user@example.com</div>
+    </header>
+
+    <div class="container">
+        
+        <!-- CURRENT REAL BALANCE -->
+        <div class="balance-card">
+            <div>
+                <h3>Real Wallet Balance</h3>
+                <div class="amount" id="real-balance-val">रु. 0</div>
+            </div>
+            <i class="fa-solid fa-wallet fa-2x" style="color: var(--accent-green);"></i>
+        </div>
+
+        <!-- QR SCANNER PAYMENT SECTION -->
+        <div class="section-title">Step 1: Scan & Pay via QR</div>
+        <div class="qr-card">
+            <div class="qr-image-wrapper" id="qr-wrapper">
+                <img src="deposit.jpg" id="deposit-qr-img" alt="Deposit QR Code" onerror="this.onerror=null; this.src='https://via.placeholder.com/200x200?text=deposit.jpg+Missing';">
+            </div>
+            <p><i class="fa-solid fa-magnifying-glass-plus"></i> Tap QR to Enlarge</p>
+            <p style="margin-top: 8px;">Accepts: <strong>eSewa / Khalti / Mobile Banking</strong></p>
+        </div>
+
+        <!-- DEPOSIT FORM -->
+        <div class="section-title">Step 2: Submit Payment Details</div>
+        <form id="deposit-form">
+            <div class="amount-grid">
+                <button type="button" class="chip-btn" onclick="selectAmount(100)">NPR 100</button>
+                <button type="button" class="chip-btn" onclick="selectAmount(200)">NPR 200</button>
+                <button type="button" class="chip-btn" onclick="selectAmount(500)">NPR 500</button>
+                <button type="button" class="chip-btn" onclick="selectAmount(1000)">NPR 1,000</button>
+                <button type="button" class="chip-btn" onclick="selectAmount(2000)">NPR 2,000</button>
+                <button type="button" class="chip-btn" onclick="selectAmount(5000)">NPR 5,000</button>
+            </div>
+
+            <div class="form-group">
+                <label>Deposit Amount (NPR) - Min NPR 100</label>
+                <input type="number" id="deposit-amount" min="100" required placeholder="Enter amount">
+            </div>
+
+            <div class="form-group">
+                <label>Payment Method</label>
+                <select id="payment-method">
+                    <option value="eSewa / QR">eSewa / Fonepay QR</option>
+                    <option value="Khalti QR">Khalti QR</option>
+                    <option value="Bank Transfer">Bank Mobile Banking</option>
+                </select>
+            </div>
+
+            <!-- SEPARATE FIELD 1: MOBILE NUMBER -->
+            <div class="form-group">
+                <label>Sender Mobile Number / Wallet ID (Mandatory)</label>
+                <input type="tel" id="sender-mobile" required placeholder="e.g. 98XXXXXXXX">
+            </div>
+
+            <!-- SEPARATE FIELD 2: TRANSACTION ID -->
+            <div class="form-group">
+                <label>Transaction ID / Ref Number (Mandatory)</label>
+                <input type="text" id="txn-id" required placeholder="e.g. TXN123890 or Ref Code">
+            </div>
+
+            <button type="submit" id="btn-submit-deposit" class="btn-submit">
+                <span id="btn-text">Submit Deposit Request</span>
+                <i class="fa-solid fa-spinner fa-spin hidden" id="spinner"></i>
+            </button>
+        </form>
+
+        <!-- DEPOSIT REQUESTS HISTORY -->
+        <div class="section-title">My Recent Deposit Requests</div>
+        <div class="history-list" id="deposit-history-container">
+            <div class="history-item">
+                <div class="history-info">
+                    <span style="color:var(--text-muted); font-size:12px;">No deposit requests submitted yet.</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- QR ENLARGE MODAL -->
+    <div id="qr-modal" class="modal hidden">
+        <div class="modal-content-qr">
+            <img src="deposit.jpg" alt="Enlarged Deposit QR">
+            <button class="chip-btn" style="margin-top: 12px; width: 100%; background: var(--bg-primary); color: #fff;" onclick="closeQrModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- FIXED BOTTOM NAVIGATION -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-link">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+        </a>
+        <a href="chart.html" class="nav-link">
+            <i class="fa-solid fa-chart-simple"></i>
+            <span>Chart</span>
+        </a>
+        <a href="demolive.html" class="nav-link">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Trade</span>
+        </a>
+        <a href="deposit.html" class="nav-link active">
+            <i class="fa-solid fa-wallet"></i>
+            <span>Deposit</span>
+        </a>
+        <a href="withdrawal.html" class="nav-link">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+            <span>Withdraw</span>
+        </a>
+    </nav>
+
+    <!-- FIREBASE COMPAT SCRIPT & DEPOSIT LOGIC -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCxADbw9ZmSHzfoNdt2eJLqBjYFaj3xJ7w",
+            authDomain: "trading-ca98c.firebaseapp.com",
+            projectId: "trading-ca98c",
+            storageBucket: "trading-ca98c.firebasestorage.app",
+            messagingSenderId: "62562061669",
+            appId: "1:62062061669:web:0e6763b05e6ebb6aa3658c",
+            measurementId: "G-945BEYMN47"
+        };
+
+        // Initialize Firebase Compat
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const loadingScreen = document.getElementById('loading-screen');
+        let currentUser = null;
+
+        // 3 Seconds Safety Fallback Timer to prevent infinite loading
+        let safetyTimer = setTimeout(() => {
+            loadingScreen.classList.add('hidden');
+        }, 3000);
+
+        // AUTH GUARD
+        auth.onAuthStateChanged(async (user) => {
+            clearTimeout(safetyTimer);
+            if (!user) {
+                window.location.href = "login.html";
+            } else {
+                currentUser = user;
+                if (user.disabled) {
+                    alert("Your account is suspended.");
+                    await auth.signOut();
+                    window.location.href = "login.html";
+                    return;
+                }
+                document.getElementById('user-email-display').innerText = user.email;
+                await loadRealBalance(user.uid);
+                await loadMyDepositHistory(user.uid);
+                loadingScreen.classList.add('hidden');
+            }
+        });
+
+        async function loadRealBalance(uid) {
+            try {
+                const docSnap = await db.collection("wallets").doc(uid).get();
+                if (docSnap.exists) {
+                    document.getElementById('real-balance-val').innerText = `रु. ${(docSnap.data().realBalance || 0).toLocaleString()}`;
+                } else {
+                    document.getElementById('real-balance-val').innerText = "रु. 0";
+                }
+            } catch (e) { console.error("Balance load error:", e); }
+        }
+
+        async function loadMyDepositHistory(uid) {
+            try {
+                // Simplified query without complex ordering to avoid missing index errors
+                const snap = await db.collection("deposit_requests")
+                    .where("userId", "==", uid)
+                    .get();
+
+                const container = document.getElementById('deposit-history-container');
+                if (snap.empty) {
+                    container.innerHTML = `
+                        <div class="history-item">
+                            <span style="color:var(--text-muted); font-size:12px;">No deposit requests submitted yet.</span>
+                        </div>`;
+                    return;
+                }
+
+                // Client-side sorting (newest first)
+                let docs = snap.docs.map(doc => doc.data());
+                docs.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+
+                container.innerHTML = docs.map(d => {
+                    const status = (d.status || 'PENDING').toUpperCase();
+                    let statusClass = 'status-pending';
+                    if (status === 'APPROVED') statusClass = 'status-approved';
+                    if (status === 'REJECTED') statusClass = 'status-rejected';
+
+                    return `
+                        <div class="history-item">
+                            <div class="history-main">
+                                <div class="history-info">
+                                    <strong>रु. ${(d.amount || 0).toLocaleString()}</strong>
+                                    <div class="history-details">
+                                        <span>Method:</span> ${d.method || 'N/A'}<br>
+                                        <span>Mobile:</span> ${d.senderMobile || 'N/A'}<br>
+                                        <span>TXN ID:</span> ${d.trxId || d.transactionId || 'N/A'}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="status-wrapper">
+                                <span style="font-size:11px; color:var(--text-muted);">Request Status:</span>
+                                <span class="status-badge ${statusClass}">${status}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) { 
+                console.error("History error:", e); 
+            }
+        }
+
+        // PRESET AMOUNT CHIPS
+        window.selectAmount = function(amt) {
+            document.getElementById('deposit-amount').value = amt;
+            document.querySelectorAll('.chip-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        };
+
+        // QR MODAL HANDLERS
+        document.getElementById('qr-wrapper').onclick = () => document.getElementById('qr-modal').classList.remove('hidden');
+        window.closeQrModal = () => document.getElementById('qr-modal').classList.add('hidden');
+
+        // FORM SUBMISSION DIRECTLY TO FIRESTORE
+        document.getElementById('deposit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const amount = parseFloat(document.getElementById('deposit-amount').value);
+            const method = document.getElementById('payment-method').value;
+            const senderMobile = document.getElementById('sender-mobile').value.trim();
+            const transactionId = document.getElementById('txn-id').value.trim();
+
+            if (amount < 100) {
+                alert("Minimum deposit amount is NPR 100.");
+                return;
+            }
+
+            if (!senderMobile) {
+                alert("Sender Mobile Number is required.");
+                return;
+            }
+
+            if (!transactionId) {
+                alert("Transaction ID / Reference Number is required.");
+                return;
+            }
+
+            const btn = document.getElementById('btn-submit-deposit');
+            const spinner = document.getElementById('spinner');
+            const btnText = document.getElementById('btn-text');
+
+            btn.disabled = true;
+            spinner.classList.remove('hidden');
+            btnText.innerText = "Submitting Request...";
+
+            try {
+                await db.collection("deposit_requests").add({
+                    userId: currentUser.uid,
+                    userEmail: currentUser.email,
+                    amount: amount,
+                    method: method,
+                    senderMobile: senderMobile,
+                    trxId: transactionId,
+                    transactionId: transactionId,
+                    status: 'PENDING',
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                alert("Deposit Request Submitted Successfully!\nStatus: PENDING Admin Verification.");
+                document.getElementById('deposit-form').reset();
+                
+                await loadMyDepositHistory(currentUser.uid);
+            } catch (err) {
+                alert("Deposit Request Failed: " + err.message);
+            } finally {
+                btn.disabled = false;
+                spinner.classList.add('hidden');
+                btnText.innerText = "Submit Deposit Request";
+            }
+        });
+    </script>
+</body>
+</html>
