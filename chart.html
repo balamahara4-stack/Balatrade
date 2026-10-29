@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Trading Support AI</title>
+  
+  <!-- Markdown Parser & Highlight.js -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+
+  <!-- Firebase Compat UMD Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-main: #090d16;
+      --bg-card: #151c2c;
+      --bg-sidebar: #0b0f19;
+      --primary: #6366f1;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: #26334d;
+      --user-msg: #4f46e5;
+      --ai-msg: #1e293b;
+      --success: #22c55e;
+      --danger: #ef4444;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: var(--bg-main); color: var(--text-main); display: flex; height: 100vh; height: 100dvh; overflow: hidden; position: relative; }
+
+    .main-viewport { flex: 1; display: flex; flex-direction: column; position: relative; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; }
+    .header { height: 60px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; padding: 0 15px; background: var(--bg-card); flex-shrink: 0; }
+    
+    .model-select { background: var(--bg-main); color: var(--text-main); border: 1px solid var(--border); padding: 6px 10px; border-radius: 6px; outline: none; font-size: 13px; }
+
+    .view-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; height: calc(100vh - 60px); }
+
+    .chat-messages { 
+      flex: 1; 
+      overflow-y: auto; 
+      -webkit-overflow-scrolling: touch; 
+      touch-action: pan-y;
+      padding: 15px; 
+      display: flex; 
+      flex-direction: column; 
+      gap: 15px; 
+      scroll-behavior: smooth; 
+    }
+    
+    .msg { max-width: 90%; padding: 14px 16px; border-radius: 12px; line-height: 1.6; font-size: 15px; word-wrap: break-word; }
+    .user-msg { align-self: flex-end; background: var(--user-msg); color: white; border-bottom-right-radius: 2px; }
+    .ai-msg { align-self: flex-start; background: var(--ai-msg); border: 1px solid var(--border); border-bottom-left-radius: 2px; width: 100%; }
+    .error-msg { background: #7f1d1d; color: #fca5a5; border-color: #991b1b; }
+    
+    .lock-banner {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid var(--danger);
+      color: #fca5a5;
+      padding: 12px;
+      border-radius: 8px;
+      margin: 10px 15px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .chat-composer { padding: 10px 15px; border-top: 1px solid var(--border); background: var(--bg-card); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+    .input-row { display: flex; gap: 8px; align-items: flex-end; background: var(--bg-main); border: 1px solid var(--border); padding: 8px 12px; border-radius: 24px; }
+    textarea { flex: 1; background: transparent; border: none; color: var(--text-main); padding: 6px 4px; resize: none; min-height: 24px; max-height: 120px; font-size: 15px; outline: none; }
+    .send-btn { background: var(--primary); border: none; color: white; width: 38px; height: 38px; border-radius: 50%; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .send-btn:disabled { background: var(--text-muted); cursor: not-allowed; }
+
+    footer { text-align: center; padding: 8px; font-size: 11px; color: var(--text-muted); background: var(--bg-sidebar); border-top: 1px solid var(--border); flex-shrink: 0; }
+  </style>
+</head>
+<body>
+
+  <main class="main-viewport">
+    <header class="header">
+      <div style="font-weight: bold; color: var(--primary); font-size: 16px;">📈 Trading Support AI</div>
+      <div>
+        <select id="modelSelect" class="model-select">
+          <option value="openai/gpt-4o-mini" selected>gpt-4o-mini</option>
+          <option value="openai/gpt-4o">gpt-4o</option>
+        </select>
+      </div>
+      <div id="limitStatus" style="font-size: 12px; color: var(--text-muted);">Chats Remaining: 2/2</div>
+    </header>
+
+    <!-- CHAT PANEL -->
+    <section class="view-panel active-panel" id="chatPanel">
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg ai">
+          Hello! I am your <strong>Trading AI</strong>. Do you have any questions regarding chart analysis, trading strategies, or market trends? <em>(Note: Only trading-related questions are allowed, and you are limited to 2 queries every 12 hours.)</em>
+        </div>
+      </div>
+      
+      <div id="lockNotice" class="lock-banner" style="display:none;">
+        ⚠️ Limit Reached! You have used your 2 chats. You can chat again after 12 hours. Time remaining: <span id="countdownTimer">--:--:--</span>
+      </div>
+
+      <div class="chat-composer">
+        <div class="input-row">
+          <textarea id="chatInput" placeholder="Ask trading-related questions only..." onkeydown="handleEnter(event)" rows="1"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendChatMessage()">➔</button>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Trading Platform &copy; 2026
+    </footer>
+  </main>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCxADbw9ZmSHzfoNdt2eJLqBjYFaj3xJ7w",
+      authDomain: "trading-ca98c.firebaseapp.com",
+      projectId: "trading-ca98c",
+      storageBucket: "trading-ca98c.firebasestorage.app",
+      messagingSenderId: "62562061669",
+      appId: "1:62062061669:web:0e6763b05e6ebb6aa3658c",
+      measurementId: "G-945BEYMN47"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // OpenRouter GPT API Engine Key
+    const OPENROUTER_API_KEY = "Sk-or-v1-2f0ae324e4c27f09e5d710cb49bd45ae8a9a3c2b05a11e07542ff5c322b3d7fe";
+    let chatHistory = [];
+    let currentUser = null;
+
+    const MAX_CHATS = 2;
+    const LOCK_DURATION_MS = 12 * 60 * 60 * 1000; // 12 Hours
+
+    // AUTH GUARD & FIREBASE SYNC
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = "login.html";
+      } else {
+        currentUser = user;
+        await loadUserDataFromFirebase();
+      }
+    });
+
+    async function loadUserDataFromFirebase() {
+      if (!currentUser) return;
+      try {
+        // 1. Load Chat History
+        const chatDocRef = db.collection("trading_chats").doc(currentUser.uid);
+        const chatDoc = await chatDocRef.get();
+        
+        const msgBox = document.getElementById('chatMessages');
+        if (chatDoc.exists) {
+          const data = chatDoc.data();
+          if (data.messages && Array.isArray(data.messages)) {
+            chatHistory = data.messages;
+            msgBox.innerHTML = `
+              <div class="msg ai">
+                Hello! I am your <strong>Trading AI</strong>. Do you have any questions regarding chart analysis, trading strategies, or market trends?
+              </div>
+            `;
+            chatHistory.forEach(item => {
+              if (item.role === 'user') {
+                const div = document.createElement('div');
+                div.className = 'msg user-msg';
+                div.innerText = item.content;
+                msgBox.appendChild(div);
+              } else if (item.role === 'assistant') {
+                const div = document.createElement('div');
+                div.className = 'msg ai';
+                div.innerHTML = marked.parse(item.content);
+                msgBox.appendChild(div);
+              }
+            });
+            scrollToBottom();
+          }
+        }
+
+        // 2. Load Rate Limit / Lock Status
+        const limitDocRef = db.collection("trading_limits").doc(currentUser.uid);
+        const limitDoc = await limitDocRef.get();
+        
+        if (limitDoc.exists) {
+          const limitData = limitDoc.data();
+          checkAndHandleLimit(limitData.count || 0, limitData.lockUntil || 0);
+        } else {
+          checkAndHandleLimit(0, 0);
+        }
+
+      } catch (err) {
+        console.error("Firebase load error:", err);
+      }
+    }
+
+    async function saveChatToFirebase() {
+      if (!currentUser) return;
+      try {
+        await db.collection("trading_chats").doc(currentUser.uid).set({
+          messages: chatHistory,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch (err) {
+        console.error("Failed to save chat:", err);
+      }
+    }
+
+    async function saveLimitToFirebase(count, lockUntil) {
+      if (!currentUser) return;
+      try {
+        await db.collection("trading_limits").doc(currentUser.uid).set({
+          count: count,
+          lockUntil: lockUntil,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch (err) {
+        console.error("Failed to save limit:", err);
+      }
+    }
+
+    function checkAndHandleLimit(count, lockUntil) {
+      const now = Date.now();
+
+      if (lockUntil && now < lockUntil) {
+        lockUI(lockUntil);
+        return false;
+      } else if (lockUntil && now >= lockUntil) {
+        saveLimitToFirebase(0, 0);
+        document.getElementById('lockNotice').style.display = 'none';
+        document.getElementById('chatInput').disabled = false;
+        document.getElementById('sendBtn').disabled = false;
+        document.getElementById('limitStatus').innerText = `Chats Remaining: ${MAX_CHATS}/${MAX_CHATS}`;
+        return true;
+      } else {
+        const remaining = MAX_CHATS - count;
+        document.getElementById('limitStatus').innerText = `Chats Remaining: ${Math.max(0, remaining)}/${MAX_CHATS}`;
+        if (remaining <= 0) {
+          const newLock = Date.now() + LOCK_DURATION_MS;
+          saveLimitToFirebase(count, newLock);
+          lockUI(newLock);
+          return false;
+        }
+        return true;
+      }
+    }
+
+    function lockUI(lockUntilTime) {
+      document.getElementById('chatInput').disabled = true;
+      document.getElementById('sendBtn').disabled = true;
+      document.getElementById('lockNotice').style.display = 'block';
+      document.getElementById('limitStatus').innerText = `Chat Locked 🔒`;
+
+      const interval = setInterval(() => {
+        const now = Date.now();
+        const distance = lockUntilTime - now;
+
+        if (distance <= 0) {
+          clearInterval(interval);
+          saveLimitToFirebase(0, 0);
+          loadUserDataFromFirebase();
+          return;
+        }
+
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        document.getElementById('countdownTimer').innerText = `${hours}h ${minutes}m ${seconds}s`;
+      }, 1000);
+    }
+
+    async function recordChatUsage() {
+      const limitDocRef = db.collection("trading_limits").doc(currentUser.uid);
+      const limitDoc = await limitDocRef.get();
+      let count = 1;
+      let lockUntil = 0;
+
+      if (limitDoc.exists) {
+        count = (limitDoc.data().count || 0) + 1;
+      }
+
+      if (count >= MAX_CHATS) {
+        lockUntil = Date.now() + LOCK_DURATION_MS;
+      }
+
+      await saveLimitToFirebase(count, lockUntil);
+      checkAndHandleLimit(count, lockUntil);
+    }
+
+    function handleEnter(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+      }
+    }
+
+    function scrollToBottom() {
+      const msgBox = document.getElementById('chatMessages');
+      msgBox.scrollTop = msgBox.scrollHeight;
+    }
+
+    async function sendChatMessage() {
+      if (!currentUser) return;
+
+      const limitDocRef = db.collection("trading_limits").doc(currentUser.uid);
+      const limitDoc = await limitDocRef.get();
+      const count = limitDoc.exists ? (limitDoc.data().count || 0) : 0;
+      const lockUntil = limitDoc.exists ? (limitDoc.data().lockUntil || 0) : 0;
+
+      if (!checkAndHandleLimit(count, lockUntil)) return;
+
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      // Strict Trading Filter
+      const tradingKeywords = /trade|trading|stock|market|chart|candlestick|buy|sell|price|forex|crypto|support|resistance|indicator|rsi|macd|fake|real|शेयर|ट्रेडिङ|बजार|चार्ट|बिक्री|किनबेच|मूल्य|सूचक|रणनीति|कसरी/i;
+      
+      const msgBox = document.getElementById('chatMessages');
+
+      const userDiv = document.createElement('div');
+      userDiv.className = 'msg user-msg';
+      userDiv.innerText = text;
+      msgBox.appendChild(userDiv);
+
+      input.value = '';
+      scrollToBottom();
+
+      const aiDiv = document.createElement('div');
+      aiDiv.className = 'msg ai';
+
+      if (!tradingKeywords.test(text)) {
+        aiDiv.innerHTML = "⚠️ <strong>I am strictly a Trading AI.</strong> Please ask questions related only to trading, stock markets, charts, or trading strategies.";
+        msgBox.appendChild(aiDiv);
+        scrollToBottom();
+        return;
+      }
+
+      aiDiv.innerText = 'Analyzing Market...';
+      msgBox.appendChild(aiDiv);
+      scrollToBottom();
+
+      const selectedModel = document.getElementById('modelSelect').value;
+
+      // System Prompt Payload
+      const systemPrompt = {
+        role: "system",
+        content: "You are a professional Trading AI Assistant. Provide direct, highly accurate responses regarding trading concepts, chart patterns, technical analysis, real vs demo trading, and risk management."
+      };
+
+      let apiMessages = [systemPrompt];
+      
+      chatHistory.forEach(h => {
+        if(h.role === 'user' || h.role === 'assistant') {
+          apiMessages.push({ role: h.role, content: h.content });
+        }
+      });
+      
+      apiMessages.push({ role: "user", content: text });
+
+      try {
+        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: selectedModel,
+            messages: apiMessages,
+            temperature: 0.6
+          })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.choices && data.choices.length > 0) {
+          const aiReply = data.choices[0].message.content;
+          
+          chatHistory.push({ role: "user", content: text });
+          chatHistory.push({ role: "assistant", content: aiReply });
+          await saveChatToFirebase();
+          
+          aiDiv.innerHTML = marked.parse(aiReply);
+          await recordChatUsage();
+        } else {
+          // Automatic Fallback Response
+          const fallbackReply = "Trading involves buying and selling financial assets (stocks, forex, or crypto) to capitalize on market price movements. Always apply proper risk management.";
+          
+          chatHistory.push({ role: "user", content: text });
+          chatHistory.push({ role: "assistant", content: fallbackReply });
+          await saveChatToFirebase();
+          
+          aiDiv.innerHTML = marked.parse(fallbackReply);
+          await recordChatUsage();
+        }
+      } catch (err) {
+        aiDiv.className = 'msg ai error-msg';
+        aiDiv.innerText = `Network Error: ${err.message}. Please try again.`;
+      }
+
+      scrollToBottom();
+    }
+  </script>
+</body>
+</html>
