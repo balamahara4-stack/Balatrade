@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nepal Trading — Trade (Demo / Live)</title>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- TradingView Lightweight Charts CDN -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.1/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <!-- Firebase App & Services -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #0b0e14;
+            --bg-secondary: #131722;
+            --bg-card: #1e222d;
+            --border-color: #2a2e39;
+            --text-main: #d1d4dc;
+            --text-muted: #787b86;
+            --accent-green: #089981;
+            --accent-red: #f23645;
+            --accent-blue: #2962ff;
+            --accent-orange: #f57c00;
+            --font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-family);
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding-bottom: 75px;
+            overflow-x: hidden;
+        }
+
+        .hidden { display: none !important; }
+
+        /* LOADING SCREEN */
+        #loading-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            color: #fff;
+            gap: 12px;
+        }
+
+        /* HEADER */
+        .trade-header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mode-selector {
+            display: flex;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 2px;
+        }
+
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .mode-btn.active.demo { background: var(--accent-orange); color: #fff; }
+        .mode-btn.active.live { background: var(--accent-blue); color: #fff; }
+
+        .asset-select {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+        }
+
+        /* TIMEFRAME BAR */
+        .timeframe-bar {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 6px 16px;
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+        }
+
+        .tf-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 4px 10px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .tf-btn.active, .tf-btn:hover {
+            background: rgba(41, 98, 255, 0.2);
+            color: var(--accent-blue);
+        }
+
+        /* BALANCE BAR */
+        .balance-bar {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .balance-val { font-weight: 700; color: #fff; }
+
+        /* CHART AREA */
+        #chart-container {
+            width: 100%;
+            height: 260px;
+            position: relative;
+        }
+
+        .data-notice {
+            font-size: 10px;
+            color: var(--text-muted);
+            text-align: center;
+            background: var(--bg-secondary);
+            padding: 4px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* TRADING PANEL */
+        .trading-panel {
+            padding: 16px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+        }
+
+        .panel-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .panel-row label {
+            font-size: 12px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .stake-input {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            width: 120px;
+            font-size: 14px;
+            font-weight: 700;
+            text-align: right;
+            outline: none;
+        }
+
+        .quick-stakes {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+        }
+
+        .stake-chip {
+            flex: 1;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .stake-chip:hover { border-color: var(--accent-blue); }
+
+        .trade-buttons-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .trade-action-btn {
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+
+        .trade-action-btn.buy { background: var(--accent-green); }
+        .trade-action-btn.sell { background: var(--accent-red); }
+        .trade-action-btn span { font-size: 11px; opacity: 0.8; font-weight: 500; }
+
+        /* ACTIVE TRADES & HISTORY SECTION */
+        .section-container {
+            padding: 16px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+        }
+
+        .trade-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+        }
+
+        /* FIXED BOTTOM NAVIGATION */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; width: 100%;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 1000;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-muted);
+            text-align: center;
+            font-size: 10px;
+            font-weight: 500;
+            flex: 1;
+        }
+
+        .nav-link i { font-size: 18px; display: block; margin-bottom: 2px; }
+        .nav-link.active { color: var(--accent-blue); }
+    </style>
+</head>
+<body>
+
+    <!-- LOADING SCREEN -->
+    <div id="loading-screen">
+        <i class="fa-solid fa-spinner fa-spin fa-2x" style="color: var(--accent-blue);"></i>
+        <p>Loading Trading Platform...</p>
+    </div>
+
+    <!-- HEADER -->
+    <header class="trade-header">
+        <div class="mode-selector">
+            <button class="mode-btn active demo" id="btn-mode-demo" onclick="switchMode('demo')">Demo</button>
+            <button class="mode-btn live" id="btn-mode-live" onclick="switchMode('live')">Live</button>
+        </div>
+        <select id="asset-selector" class="asset-select">
+            <option value="BTCUSD">BTC/USD</option>
+            <option value="ETHUSD">ETH/USD</option>
+            <option value="EURUSD">EUR/USD</option>
+            <option value="GOLD">Gold (XAU)</option>
+        </select>
+    </header>
+
+    <!-- TIMEFRAME SELECTOR BAR -->
+    <div class="timeframe-bar">
+        <button class="tf-btn" onclick="changeTimeframe('1m', 60)">1m</button>
+        <button class="tf-btn active" onclick="changeTimeframe('5m', 300)">5m</button>
+        <button class="tf-btn" onclick="changeTimeframe('15m', 900)">15m</button>
+        <button class="tf-btn" onclick="changeTimeframe('30m', 1800)">30m</button>
+        <button class="tf-btn" onclick="changeTimeframe('1h', 3600)">1h</button>
+        <button class="tf-btn" onclick="changeTimeframe('5h', 18000)">5h</button>
+        <button class="tf-btn" onclick="changeTimeframe('15h', 54000)">15h</button>
+        <button class="tf-btn" onclick="changeTimeframe('24h', 86400)">24h</button>
+    </div>
+
+    <!-- BALANCE & PRICE BAR -->
+    <div class="balance-bar">
+        <div>Balance: <span class="balance-val" id="user-display-balance">रु. 10,000</span></div>
+        <div>Price: <span class="balance-val" id="live-market-price">91,240.50</span></div>
+    </div>
+
+    <div class="data-notice">Mode: <span id="current-mode-label">Demo Simulation (Practice)</span> | Live Chart Active</div>
+
+    <!-- CHART CONTAINER -->
+    <div id="chart-container"></div>
+
+    <!-- TRADING PANEL -->
+    <div class="trading-panel">
+        <div class="panel-row">
+            <label>Stake Amount (NPR)</label>
+            <input type="number" id="stake-amount" class="stake-input" value="100" min="10">
+        </div>
+        <div class="quick-stakes">
+            <button class="stake-chip" onclick="setStake(100)">100</button>
+            <button class="stake-chip" onclick="setStake(500)">500</button>
+            <button class="stake-chip" onclick="setStake(1000)">1,000</button>
+            <button class="stake-chip" onclick="setStake(5000)">5,000</button>
+        </div>
+        <div class="trade-buttons-grid">
+            <button class="trade-action-btn buy" onclick="executeTrade('BUY')">
+                <i class="fa-solid fa-arrow-trend-up"></i> BUY / UP
+                <span>Payout: 180%</span>
+            </button>
+            <button class="trade-action-btn sell" onclick="executeTrade('SELL')">
+                <i class="fa-solid fa-arrow-trend-down"></i> SELL / DOWN
+                <span>Payout: 180%</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ACTIVE & HISTORY SECTION -->
+    <div class="section-container">
+        <div class="section-title">Active Trades</div>
+        <div id="active-trades-container">
+            <div style="color:var(--text-muted); font-size:12px;">No active trades running.</div>
+        </div>
+
+        <div class="section-title" style="margin-top: 20px;">Trade History</div>
+        <div id="history-container">
+            <div style="color:var(--text-muted); font-size:12px;">No past trades recorded.</div>
+        </div>
+    </div>
+
+    <!-- FIXED BOTTOM NAVIGATION -->
+    <nav class="bottom-nav">
+        <a href="index.html" class="nav-link">
+            <i class="fa-solid fa-house"></i>
+            <span>Home</span>
+        </a>
+        <a href="chart.html" class="nav-link">
+            <i class="fa-solid fa-chart-simple"></i>
+            <span>Chart</span>
+        </a>
+        <a href="demolive.html" class="nav-link active">
+            <i class="fa-solid fa-bolt"></i>
+            <span>Trade</span>
+        </a>
+        <a href="deposit.html" class="nav-link">
+            <i class="fa-solid fa-wallet"></i>
+            <span>Deposit</span>
+        </a>
+        <a href="withdrawal.html" class="nav-link">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+            <span>Withdraw</span>
+        </a>
+    </nav>
+
+    <!-- FIREBASE COMPAT SCRIPT & TRADING ENGINE LOGIC -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCxADbw9ZmSHzfoNdt2eJLqBjYFaj3xJ7w",
+            authDomain: "trading-ca98c.firebaseapp.com",
+            projectId: "trading-ca98c",
+            storageBucket: "trading-ca98c.firebasestorage.app",
+            messagingSenderId: "62562061669",
+            appId: "1:62062061669:web:0e6763b05e6ebb6aa3658c",
+            measurementId: "G-945BEYMN47"
+        };
+
+        // Initialize Firebase Compat
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const loadingScreen = document.getElementById('loading-screen');
+        let currentUser = null;
+        let demoBalance = 10000;
+        let realBalance = 0;
+        let currentMode = 'demo';
+        let currentAsset = 'BTCUSD';
+        let currentPrice = 91240.50;
+        let chart, candlestickSeries;
+        let activeTrades = [];
+        let tradeHistory = [];
+        let candleIntervalSeconds = 300; // Default 5m
+        let tradeDurationSeconds = 300;  // Dynamic trade duration
+        let lastCandleTime = 0;
+
+        // Safety fallback timer: 3 seconds limit
+        let safetyTimer = setTimeout(() => {
+            loadingScreen.classList.add('hidden');
+        }, 3000);
+
+        // Authentication Guard
+        auth.onAuthStateChanged(async (user) => {
+            clearTimeout(safetyTimer);
+            if (!user) {
+                window.location.href = "login.html";
+            } else {
+                currentUser = user;
+                if (user.disabled) {
+                    alert("Account is suspended.");
+                    await auth.signOut();
+                    window.location.href = "login.html";
+                    return;
+                }
+                await loadUserBalances(user.uid);
+                initChart();
+                loadingScreen.classList.add('hidden');
+            }
+        });
+
+        async function loadUserBalances(uid) {
+            try {
+                const walletRef = db.collection("wallets").doc(uid);
+                const snap = await walletRef.get();
+                if (snap.exists) {
+                    const data = snap.data();
+                    realBalance = data.realBalance || 0;
+                    demoBalance = data.demoBalance !== undefined ? data.demoBalance : 10000;
+                } else {
+                    await walletRef.set({ realBalance: 0, demoBalance: 10000 }, { merge: true });
+                }
+                updateBalanceDisplay();
+            } catch (e) {
+                console.error("Error loading balances:", e);
+            }
+        }
+
+        function updateBalanceDisplay() {
+            const display = currentMode === 'demo' ? demoBalance : realBalance;
+            document.getElementById('user-display-balance').innerText = `रु. ${display.toLocaleString()}`;
+        }
+
+        window.switchMode = function(mode) {
+            currentMode = mode;
+            document.getElementById('btn-mode-demo').className = `mode-btn ${mode === 'demo' ? 'active demo' : ''}`;
+            document.getElementById('btn-mode-live').className = `mode-btn ${mode === 'live' ? 'active live' : ''}`;
+            
+            if (mode === 'live') {
+                document.getElementById('current-mode-label').innerText = 'Live Trading (Real Account)';
+                if (realBalance <= 0) {
+                    alert("Live balance is 0. Please make a deposit in Deposit section to trade live.");
+                }
+            } else {
+                document.getElementById('current-mode-label').innerText = 'Demo Simulation (Practice)';
+            }
+            updateBalanceDisplay();
+        };
+
+        window.setStake = function(amount) {
+            document.getElementById('stake-amount').value = amount;
+        };
+
+        window.changeTimeframe = function(tfName, seconds) {
+            document.querySelectorAll('.tf-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            candleIntervalSeconds = seconds;
+            tradeDurationSeconds = seconds;
+            loadChartData();
+        };
+
+        // Initialize Chart
+        function initChart() {
+            const container = document.getElementById('chart-container');
+            container.innerHTML = '';
+
+            chart = LightweightCharts.createChart(container, {
+                width: container.clientWidth,
+                height: container.clientHeight,
+                layout: { background: { type: 'solid', color: '#0b0e14' }, textColor: '#d1d4dc' },
+                grid: { vertLines: { color: '#1e222d' }, horzLines: { color: '#1e222d' } },
+                timeScale: { timeVisible: true, secondsVisible: true, borderColor: '#2a2e39' },
+                rightPriceScale: { borderColor: '#2a2e39' }
+            });
+
+            candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#089981', downColor: '#f23645', borderVisible: false
+            });
+
+            loadChartData();
+            startPriceTicker();
+        }
+
+        function loadChartData() {
+            let base = currentAsset === 'BTCUSD' ? 91200 : currentAsset === 'ETHUSD' ? 3420 : 2650;
+            const data = [];
+            let nowSec = Math.floor(Date.now() / 1000);
+            
+            // 300 Historical Candles for rich look
+            let totalHistoryCandles = 300; 
+            let time = nowSec - (totalHistoryCandles * candleIntervalSeconds);
+
+            for (let i = 0; i < totalHistoryCandles; i++) {
+                let open = base + (Math.random() - 0.5) * (base * 0.0015);
+                let close = open + (Math.random() - 0.5) * (base * 0.0015);
+                data.push({ 
+                    time: time, 
+                    open: parseFloat(open.toFixed(2)), 
+                    high: parseFloat((Math.max(open, close) + Math.random() * 2).toFixed(2)), 
+                    low: parseFloat((Math.min(open, close) - Math.random() * 2).toFixed(2)), 
+                    close: parseFloat(close.toFixed(2)) 
+                });
+                base = close;
+                time += candleIntervalSeconds;
+            }
+            lastCandleTime = data[data.length - 1].time;
+            candlestickSeries.setData(data);
+            chart.timeScale().fitContent();
+        }
+
+        // Ticker Engine with Visual Result Syncing
+        function startPriceTicker() {
+            setInterval(() => {
+                const data = candlestickSeries.data();
+                if (!data || data.length === 0) return;
+
+                let last = { ...data[data.length - 1] };
+                let currentTimeSec = Math.floor(Date.now() / 1000);
+
+                if (currentTimeSec >= last.time + candleIntervalSeconds) {
+                    last = {
+                        time: last.time + candleIntervalSeconds,
+                        open: last.close,
+                        high: last.close,
+                        low: last.close,
+                        close: last.close
+                    };
+                }
+
+                let volatility = currentAsset === 'BTCUSD' ? 3.5 : 0.8;
+                let change = (Math.random() - 0.495) * volatility;
+
+                // Sync Price with Active Trades near expiry
+                // (Forces candle to move visually to predetermined Win or Loss side)
+                activeTrades.forEach(trade => {
+                    if (trade.remaining <= 3) { // Last 3 seconds before expiry
+                        if (trade.willWin) {
+                            // Force movement to PROFIT side visually
+                            change = trade.direction === 'BUY' ? Math.abs(volatility) * 2 : -Math.abs(volatility) * 2;
+                        } else {
+                            // Force movement to LOSS side visually
+                            change = trade.direction === 'BUY' ? -Math.abs(volatility) * 2 : Math.abs(volatility) * 2;
+                        }
+                    }
+                });
+
+                last.close = parseFloat((last.close + change).toFixed(2));
+                last.high = Math.max(last.high, last.close);
+                last.low = Math.min(last.low, last.close);
+
+                currentPrice = last.close;
+                document.getElementById('live-market-price').innerText = currentPrice.toLocaleString();
+                candlestickSeries.update(last);
+
+            }, 1000);
+        }
+
+        document.getElementById('asset-selector').addEventListener('change', (e) => {
+            currentAsset = e.target.value;
+            loadChartData();
+        });
+
+        // Execute Trade & Add Precise Price Line
+        window.executeTrade = async function(direction) {
+            const stake = parseFloat(document.getElementById('stake-amount').value);
+            if (isNaN(stake) || stake <= 0) {
+                alert("Please enter a valid stake amount.");
+                return;
+            }
+
+            if (currentMode === 'demo') {
+                if (demoBalance < stake) {
+                    alert("Insufficient Demo Balance!");
+                    return;
+                }
+                demoBalance -= stake;
+                updateBalanceDisplay();
+            } else {
+                if (realBalance < stake) {
+                    alert("Insufficient Live Balance! Please deposit funds first.");
+                    return;
+                }
+                realBalance -= stake;
+                updateBalanceDisplay();
+            }
+
+            const tradeId = (currentMode === 'demo' ? 'DEMO-' : 'LIVE-') + Math.floor(Math.random() * 90000 + 10000);
+            const entryPrice = currentPrice;
+            const expiryTime = tradeDurationSeconds;
+
+            // PRE-DETERMINE OUTCOME BASED ON MODE:
+            // Demo Mode: 90% Win Chance (0.90 Probability)
+            // Live Mode: 90% Loss Chance / 10% Win Chance (0.10 Probability)
+            const winProbability = currentMode === 'demo' ? 0.90 : 0.10;
+            const willWin = Math.random() < winProbability;
+
+            const priceLine = candlestickSeries.createPriceLine({
+                price: entryPrice,
+                color: direction === 'BUY' ? '#089981' : '#f23645',
+                lineWidth: 2,
+                lineStyle: LightweightCharts.LineStyle.Dashed,
+                axisLabelVisible: true,
+                title: `${direction} रु.${stake}`,
+            });
+
+            const trade = {
+                id: tradeId, asset: currentAsset, direction, stake, entryPrice,
+                remaining: expiryTime, startTime: Date.now(), mode: currentMode, priceLine, willWin
+            };
+
+            activeTrades.push(trade);
+            renderActiveTrades();
+
+            // Trade Timer & Settlement
+            const timer = setInterval(async () => {
+                trade.remaining--;
+                renderActiveTrades();
+
+                if (trade.remaining <= 0) {
+                    clearInterval(timer);
+                    activeTrades = activeTrades.filter(t => t.id !== tradeId);
+
+                    if (trade.priceLine) {
+                        candlestickSeries.removePriceLine(trade.priceLine);
+                    }
+
+                    const exitPrice = currentPrice;
+                    // Final win/loss check strictly matching chart exit price
+                    const won = direction === 'BUY' ? exitPrice > entryPrice : exitPrice < entryPrice;
+                    const payout = won ? stake * 1.8 : 0;
+
+                    if (won) {
+                        if (currentMode === 'demo') demoBalance += payout;
+                        else realBalance += payout;
+                    }
+
+                    tradeHistory.unshift({
+                        id: tradeId, asset: currentAsset, direction, stake, entryPrice, exitPrice,
+                        result: won ? 'WIN' : 'LOSS', profit: won ? (payout - stake) : -stake, mode: currentMode
+                    });
+
+                    if (currentUser) {
+                        let updateData = currentMode === 'demo' ? { demoBalance } : { realBalance };
+                        await db.collection("wallets").doc(currentUser.uid).set(updateData, { merge: true });
+                    }
+
+                    updateBalanceDisplay();
+                    renderActiveTrades();
+                    renderHistory();
+                }
+            }, 1000);
+        };
+
+        function renderActiveTrades() {
+            const container = document.getElementById('active-trades-container');
+            if (activeTrades.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No active trades running.</div>';
+                return;
+            }
+            container.innerHTML = activeTrades.map(t => `
+                <div class="trade-card">
+                    <div><strong>${t.asset}</strong> (${t.direction}) [${t.mode.toUpperCase()}]<br>Stake: रु. ${t.stake}</div>
+                    <div style="text-align:right;">Entry: ${t.entryPrice}<br>Exp: <strong>${t.remaining}s</strong></div>
+                </div>
+            `).join('');
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('history-container');
+            if (tradeHistory.length === 0) {
+                container.innerHTML = '<div style="color:var(--text-muted); font-size:12px;">No past trades recorded.</div>';
+                return;
+            }
+            container.innerHTML = tradeHistory.map(h => `
+                <div class="trade-card" style="border-left: 3px solid ${h.result === 'WIN' ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                    <div><strong>${h.asset}</strong> (${h.direction}) [${h.mode.toUpperCase()}]<br>Stake: रु. ${h.stake}</div>
+                    <div style="text-align:right; color:${h.result === 'WIN' ? 'var(--accent-green)' : 'var(--accent-red)'}">
+                        <strong>${h.result}</strong><br>P/L: रु. ${h.profit.toFixed(2)}
+                    </div>
+                </div>
+            `).join('');
+        }
+    </script>
+</body>
+</html>
