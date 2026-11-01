@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Nepal AI - Full Featured AI Assistant</title>
+  <title>Trade AI - Full Featured AI Assistant</title>
   
   <!-- Markdown Parser & Highlight.js -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -101,42 +101,6 @@
       font-weight: 600;
     }
 
-    /* REAL WORKING IMAGE CONTAINER */
-    .photo-result-container {
-      background: #0d1117;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      margin-top: 10px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      width: 100%;
-    }
-    .photo-result-container img {
-      width: 100%;
-      max-width: 450px;
-      height: auto;
-      border-radius: 8px;
-      display: block;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-    }
-    .download-btn {
-      background: var(--success);
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 14px;
-    }
-
     /* Code Container & Preview Frame */
     .code-container { position: relative; margin: 12px 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #0d1117; }
     .code-header { display: flex; justify-content: space-between; align-items: center; background: #161b22; padding: 6px 12px; font-size: 12px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
@@ -183,7 +147,7 @@
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <div class="logo">🇳🇵 Nepal AI</div>
+      <div class="logo">📈 Trade AI</div>
       <button class="close-sidebar-btn" onclick="toggleSidebar()">✕</button>
     </div>
     <div class="mode-nav">
@@ -217,7 +181,7 @@
     <section class="view-panel active-panel" id="chatPanel">
       <div class="chat-messages" id="chatMessages">
         <div class="msg ai">
-          Hello! I am <strong>Nepal AI</strong>. Feel free to ask anything about image analysis, translation, or AI photo generation. <em>(Note: You are limited to 2 queries every 12 hours.)</em>
+          Hello! I am <strong>Trade AI</strong>. Feel free to ask anything about image analysis, translation, or technical support. <em>(Note: You are limited to 2 queries every 12 hours.)</em>
         </div>
       </div>
       
@@ -233,7 +197,7 @@
           
           <button class="plus-btn" id="micBtn" onclick="toggleVoiceInput()" title="Voice Dictation" style="font-size:15px;">🎙️</button>
           
-          <textarea id="chatInput" placeholder="Ask anything (Photo, Image Gen, Chat)..." onkeydown="handleEnter(event)" rows="1"></textarea>
+          <textarea id="chatInput" placeholder="Ask anything (Chat, Analysis)..." onkeydown="handleEnter(event)" rows="1"></textarea>
           
           <button class="send-btn" id="sendBtn" onclick="sendChatMessage()">➔</button>
         </div>
@@ -265,7 +229,7 @@
           </div>
         </div>
 
-        <input type="text" id="motionPrompt" placeholder="Optional instruction (e.g., 'Dancing in traditional Nepali dress')" style="width:100%; padding:12px; background:var(--bg-main); border:1px solid var(--border); color:var(--text-main); border-radius:8px; outline:none;">
+        <input type="text" id="motionPrompt" placeholder="Optional instruction (e.g., 'Dancing in traditional dress')" style="width:100%; padding:12px; background:var(--bg-main); border:1px solid var(--border); color:var(--text-main); border-radius:8px; outline:none;">
         <button class="code-btn" onclick="startMotionTransfer()" style="width:100%; padding:14px; font-size:15px;">Generate Motion Video</button>
         
         <div id="motionStatusBox" class="status-box" style="display:none;"></div>
@@ -273,7 +237,7 @@
     </section>
 
     <footer>
-      Created by Shatrudhan Mahara Chamar | Nepal AI &copy; 2026
+      Created by trade owner | Trade AI &copy; 2026
     </footer>
   </main>
 
@@ -321,7 +285,7 @@
     async function loadLimitFromFirebase() {
       if (!currentUser) return;
       try {
-        const limitDocRef = db.collection("nepal_ai_limits").doc(currentUser.uid);
+        const limitDocRef = db.collection("trade_ai_limits").doc(currentUser.uid);
         const limitDoc = await limitDocRef.get();
         
         if (limitDoc.exists) {
@@ -338,7 +302,7 @@
     async function saveLimitToFirebase(count, lockUntil) {
       if (!currentUser) return;
       try {
-        await db.collection("nepal_ai_limits").doc(currentUser.uid).set({
+        await db.collection("trade_ai_limits").doc(currentUser.uid).set({
           count: count,
           lockUntil: lockUntil,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -401,7 +365,7 @@
 
     async function recordChatUsage() {
       if (!currentUser) return;
-      const limitDocRef = db.collection("nepal_ai_limits").doc(currentUser.uid);
+      const limitDocRef = db.collection("trade_ai_limits").doc(currentUser.uid);
       const limitDoc = await limitDocRef.get();
       let count = 1;
       let lockUntil = 0;
@@ -474,7 +438,7 @@
 
     function clearChat() {
       chatHistory = [];
-      document.getElementById('chatMessages').innerHTML = '<div class="msg ai">Hello! I am Nepal AI. How can I help you today?</div>';
+      document.getElementById('chatMessages').innerHTML = '<div class="msg ai">Hello! I am Trade AI. How can I help you today?</div>';
       if (window.innerWidth <= 768) toggleSidebar();
     }
 
@@ -485,7 +449,7 @@
 
     async function sendChatMessage() {
       if (currentUser) {
-        const limitDocRef = db.collection("nepal_ai_limits").doc(currentUser.uid);
+        const limitDocRef = db.collection("trade_ai_limits").doc(currentUser.uid);
         const limitDoc = await limitDocRef.get();
         const count = limitDoc.exists ? (limitDoc.data().count || 0) : 0;
         const lockUntil = limitDoc.exists ? (limitDoc.data().lockUntil || 0) : 0;
@@ -498,8 +462,6 @@
       if (!text && !attachedBase64) return;
 
       const msgBox = document.getElementById('chatMessages');
-
-      const isImageGen = /generate image|create image|draw|picture of|photo of/i.test(text);
 
       const userDiv = document.createElement('div');
       userDiv.className = 'msg user-msg';
@@ -517,26 +479,6 @@
       aiDiv.innerText = 'Thinking...';
       msgBox.appendChild(aiDiv);
       scrollToBottom();
-
-      if (isImageGen) {
-        let cleanPrompt = text.replace(/create|generate|photo of|picture of/gi, '').trim();
-        if(!cleanPrompt) cleanPrompt = "beautiful mountain landscape scenery";
-        
-        const encodedPrompt = encodeURIComponent(cleanPrompt);
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=1024&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
-        
-        aiDiv.innerHTML = `
-          <p>Here is the AI-generated photo based on your prompt:</p>
-          <div class="photo-result-container">
-            <img src="${imageUrl}" alt="Generated AI Photo" id="genPhotoImg" onerror="this.src='https://via.placeholder.com/600x400?text=Image+Generation+Failed'">
-            <a href="${imageUrl}" target="_blank" download="nepal_ai_photo.jpg" class="download-btn">📥 Download Photo</a>
-          </div>
-        `;
-        attachedBase64 = null;
-        await recordChatUsage();
-        scrollToBottom();
-        return;
-      }
 
       let selectedModel = document.getElementById('modelSelect').value;
       let messagesContent = text;
