@@ -96,17 +96,17 @@
     <section class="view-panel active-panel" id="chatPanel">
       <div class="chat-messages" id="chatMessages">
         <div class="msg ai">
-          Hello! I am your <strong>AI Assistant</strong>. How can I help you today? <em>(Note: You are limited to 2 queries every 12 hours.)</em>
+          नमस्ते! म तपाईंको AI सहायक हूँ। मलाई तपाईंले जुनसुकै कुरा सोध्न सक्नुहुन्छ। <em>(नोट: तपाईंले प्रत्येक १२ घण्टामा २ वटा प्रश्न सोध्न सक्नुहुन्छ।)</em>
         </div>
       </div>
       
       <div id="lockNotice" class="lock-banner" style="display:none;">
-        ⚠️ Limit Reached! You have used your 2 chats. You can chat again after 12 hours. Time remaining: <span id="countdownTimer">--:--:--</span>
+        ⚠️ सीमा समाप्त भयो! तपाईंले आफ्ना २ वटा च्याटहरू प्रयोग गरिसक्नुभएको छ। तपाईंले १२ घण्टापछि फेरि च्याट गर्न सक्नुहुन्छ। बाँकी समय: <span id="countdownTimer">--:--:--</span>
       </div>
 
       <div class="chat-composer">
         <div class="input-row">
-          <textarea id="chatInput" placeholder="Type your message here..." onkeydown="handleEnter(event)" rows="1"></textarea>
+          <textarea id="chatInput" placeholder="तपाईँको सन्देश यहां लेख्नुहोस्..." onkeydown="handleEnter(event)" rows="1"></textarea>
           <button class="send-btn" id="sendBtn" onclick="sendChatMessage()">➔</button>
         </div>
       </div>
@@ -132,7 +132,6 @@
     const auth = firebase.auth();
     const db = firebase.firestore();
 
-    // OpenRouter GPT API Engine Key
     const OPENROUTER_API_KEY = "Sk-or-v1-2f0ae324e4c27f09e5d710cb49bd45ae8a9a3c2b05a11e07542ff5c322b3d7fe";
     let chatHistory = [];
     let currentUser = null;
@@ -140,7 +139,6 @@
     const MAX_CHATS = 2;
     const LOCK_DURATION_MS = 12 * 60 * 60 * 1000; // 12 Hours
 
-    // AUTH GUARD & FIREBASE SYNC
     auth.onAuthStateChanged(async (user) => {
       if (!user) {
         window.location.href = "login.html";
@@ -153,7 +151,6 @@
     async function loadUserDataFromFirebase() {
       if (!currentUser) return;
       try {
-        // 1. Load Chat History
         const chatDocRef = db.collection("trading_chats").doc(currentUser.uid);
         const chatDoc = await chatDocRef.get();
         
@@ -164,7 +161,7 @@
             chatHistory = data.messages;
             msgBox.innerHTML = `
               <div class="msg ai">
-                Hello! I am your <strong>AI Assistant</strong>. How can I help you today?
+                नमस्ते! म तपाईंको AI सहायक हूँ। मलाई तपाईंले जुनसुकै कुरा सोध्न सक्नुहुन्छ।
               </div>
             `;
             chatHistory.forEach(item => {
@@ -184,7 +181,6 @@
           }
         }
 
-        // 2. Load Rate Limit / Lock Status
         const limitDocRef = db.collection("trading_limits").doc(currentUser.uid);
         const limitDoc = await limitDocRef.get();
         
@@ -263,7 +259,7 @@
 
         if (distance <= 0) {
           clearInterval(interval);
-          saveLimitToFirebase(0, 0);
+          saveLimitVtoFirebase(0, 0);
           loadUserDataFromFirebase();
           return;
         }
@@ -332,23 +328,23 @@
 
       const aiDiv = document.createElement('div');
       aiDiv.className = 'msg ai';
-      aiDiv.innerText = 'Thinking...';
+      aiDiv.innerText = 'सोच्दैछ (Thinking)...';
       msgBox.appendChild(aiDiv);
       scrollToBottom();
 
-      const selectedModel = document.getElementById('modelSelect').value;
+      const selectedModel = document.getElementById('modelSelect5') || document.getElementById('modelSelect').value;
 
-      // System Prompt Payload for General Helpful Chat
+      // सुधार्बिएको System Prompt ताकि युजरले जुन भाषामा सोध्छ, त्यसैमा विस्तृत र सही उत्तर दिन
       const systemPrompt = {
         role: "system",
-        content: "You are a helpful and intelligent AI assistant. Provide clear, direct, and accurate responses to any questions asked by the user."
+        content: "You are a helpful, smart, and friendly AI assistant. Give detailed, accurate, and natural responses to whatever the user asks, matching the language of their prompt (Nepali or English)."
       };
 
       let apiMessages = [systemPrompt];
       
       chatHistory.forEach(h => {
         if(h.role === 'user' || h.role === 'assistant') {
-          apiMessages.push({ role: h.role, content: h.content });
+          apiMessages.push({ role: h.link || h.role, content: h.content });
         }
       });
       
@@ -362,7 +358,7 @@
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            model: selectedModel,
+            model: document.getElementById('modelSelect').value,
             messages: apiMessages,
             temperature: 0.7
           })
@@ -380,7 +376,7 @@
           aiDiv.innerHTML = marked.parse(aiReply);
           await recordChatUsage();
         } else {
-          const fallbackReply = "Hello! How can I assist you further today?";
+          const fallbackReply = "नमस्ते! म तपाईंको कुरा बुझें। यस विषयमा म तपाईंलाई सहयोग गर्न तयार छु, कृपया आफ्नो प्रश्न स्पष्ट राख्नुहोला।";
           
           chatHistory.push({ role: "user", content: text });
           chatHistory.push({ role: "assistant", content: fallbackReply });
@@ -391,7 +387,7 @@
         }
       } catch (err) {
         aiDiv.className = 'msg ai error-msg';
-        aiDiv.innerText = `Network Error: ${err.message}. Please try again.`;
+        aiDiv.innerText = `Network Error: ${err.message}. कृपया फेरि प्रयास गर्नुहोस्।`;
       }
 
       scrollToBottom();
