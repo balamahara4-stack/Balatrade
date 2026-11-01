@@ -96,7 +96,7 @@
     <section class="view-panel active-panel" id="chatPanel">
       <div class="chat-messages" id="chatMessages">
         <div class="msg ai">
-          Hello! I am your <strong>Trading AI</strong>. Do you have any questions regarding chart analysis, trading strategies, or market trends? <em>(Note: Only trading-related questions are allowed, and you are limited to 2 queries every 12 hours.)</em>
+          Hello! I am your <strong>AI Assistant</strong>. How can I help you today? <em>(Note: You are limited to 2 queries every 12 hours.)</em>
         </div>
       </div>
       
@@ -106,7 +106,7 @@
 
       <div class="chat-composer">
         <div class="input-row">
-          <textarea id="chatInput" placeholder="Ask trading-related questions only..." onkeydown="handleEnter(event)" rows="1"></textarea>
+          <textarea id="chatInput" placeholder="Type your message here..." onkeydown="handleEnter(event)" rows="1"></textarea>
           <button class="send-btn" id="sendBtn" onclick="sendChatMessage()">➔</button>
         </div>
       </div>
@@ -164,7 +164,7 @@
             chatHistory = data.messages;
             msgBox.innerHTML = `
               <div class="msg ai">
-                Hello! I am your <strong>Trading AI</strong>. Do you have any questions regarding chart analysis, trading strategies, or market trends?
+                Hello! I am your <strong>AI Assistant</strong>. How can I help you today?
               </div>
             `;
             chatHistory.forEach(item => {
@@ -319,9 +319,6 @@
       const input = document.getElementById('chatInput');
       const text = input.value.trim();
       if (!text) return;
-
-      // Strict Trading Filter
-      const tradingKeywords = /trade|trading|stock|market|chart|candlestick|buy|sell|price|forex|crypto|support|resistance|indicator|rsi|macd|fake|real|शेयर|ट्रेडिङ|बजार|चार्ट|बिक्री|किनबेच|मूल्य|सूचक|रणनीति|कसरी/i;
       
       const msgBox = document.getElementById('chatMessages');
 
@@ -335,24 +332,16 @@
 
       const aiDiv = document.createElement('div');
       aiDiv.className = 'msg ai';
-
-      if (!tradingKeywords.test(text)) {
-        aiDiv.innerHTML = "⚠️ <strong>I am strictly a Trading AI.</strong> Please ask questions related only to trading, stock markets, charts, or trading strategies.";
-        msgBox.appendChild(aiDiv);
-        scrollToBottom();
-        return;
-      }
-
-      aiDiv.innerText = 'Analyzing Market...';
+      aiDiv.innerText = 'Thinking...';
       msgBox.appendChild(aiDiv);
       scrollToBottom();
 
       const selectedModel = document.getElementById('modelSelect').value;
 
-      // System Prompt Payload
+      // System Prompt Payload for General Helpful Chat
       const systemPrompt = {
         role: "system",
-        content: "You are a professional Trading AI Assistant. Provide direct, highly accurate responses regarding trading concepts, chart patterns, technical analysis, real vs demo trading, and risk management."
+        content: "You are a helpful and intelligent AI assistant. Provide clear, direct, and accurate responses to any questions asked by the user."
       };
 
       let apiMessages = [systemPrompt];
@@ -375,7 +364,7 @@
           body: JSON.stringify({
             model: selectedModel,
             messages: apiMessages,
-            temperature: 0.6
+            temperature: 0.7
           })
         });
 
@@ -391,8 +380,7 @@
           aiDiv.innerHTML = marked.parse(aiReply);
           await recordChatUsage();
         } else {
-          // Automatic Fallback Response
-          const fallbackReply = "Trading involves buying and selling financial assets (stocks, forex, or crypto) to capitalize on market price movements. Always apply proper risk management.";
+          const fallbackReply = "Hello! How can I assist you further today?";
           
           chatHistory.push({ role: "user", content: text });
           chatHistory.push({ role: "assistant", content: fallbackReply });
